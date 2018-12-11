@@ -2,8 +2,8 @@
   {"id":1,
   "level":"Easy",
   "pieces": [
-    {"desc":"RED_CAR",   "orientation":"HORIZONTAL", "row":2, "col":0},
-    {"type":"YEL_TRUCK", "orientation":"VERTICAL"    "row":0, "col":2},
+    {"type":"RED_CAR",   "orientation":"HORIZONTAL", "row":2, "col":0},
+    {"type":"YEL_TRUCK", "orientation":"VERTICAL",   "row":0, "col":2},
     {"type":"PRP_TRUCK", "orientation":"HORIZONTAL", "row":3, "col":0},
     {"type":"BLU_TRUCK", "orientation":"VERTICAL",   "row":3, "col":5},
     {"type":"LGN_CAR",   "orientation":"HORIZONTAL", "row":0, "col":4}

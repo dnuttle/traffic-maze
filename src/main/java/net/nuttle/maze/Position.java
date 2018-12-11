@@ -29,10 +29,26 @@ public class Position {
     }
     this.col = col;
   }
+  public Position clonePosition() {
+    return new Position(row, col);
+  }
   
   @Override
   public int hashCode() {
     return primes[row] * primes[col + 6];
+  }
+  
+  @Override
+  public boolean equals(Object o) {
+    if (o == null) return false;
+    if (! (o instanceof Position)) return false;
+    Position p = (Position) o;
+    return (p.getCol() == col && p.getRow() == row);
+  }
+  
+  @Override
+  public String toString() {
+    return row + ", " + col;
   }
   
 }
