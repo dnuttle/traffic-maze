@@ -21,8 +21,11 @@ public class Board {
   private List<Vehicle> pieces;
   private Move move;
   private byte[] spaces;
+  private String movesHash;
+  private int hashCode;
   
   public Board() {
+    this.movesHash = "";
     pieces = new ArrayList<>();
   }
   
@@ -66,38 +69,56 @@ public class Board {
           }
         }
       }
-      /*
-      for (int i = 0; i < 6; i++) {
-        LOG.debug("Row " + i + ": " + spaces[i]);
-      }
-      */
       sortPieces();
+      StringBuilder sb = new StringBuilder();
+      for (Vehicle piece : pieces) {
+        sb.append(String.format("%02d", piece.getId())).append(":");
+        sb.append(piece.getPosition().getRow()).append(",");
+        sb.append(piece.getPosition().getCol()).append(";");
+      }
+      hashCode = sb.toString().hashCode();
     }
   }
   
-  public boolean isSpaceOpen(Vehicle v, Direction dir, int offset) {
-    Orientation orient = v.getOrientation();
-    if (orient == HORIZONTAL && (dir == N || dir == S)) return false;
-    if (orient == VERTICAL && (dir == E || dir == W)) return false;
-    finalize();
-    int row = v.getPosition().getRow();
-    int col = v.getPosition().getCol();
-    int size = v.getType() == Type.TRUCK ? 3 : 2;
+
+  public int getSpacesOpen(Board b, Vehicle piece, Direction dir) {
+    int col = piece.getPosition().getCol();
+    int row = piece.getPosition().getRow();
+    int size = piece.getType() == Type.TRUCK ? 3 : 2;
+    if (piece.getOrientation() == HORIZONTAL && (dir == N || dir == S)) return 0;
+    if (piece.getOrientation() == VERTICAL && (dir == E || dir == W)) return 0;
+    int moves = 0;
     switch (dir) {
     case N:
-      if (row + offset <= 0 || orient == HORIZONTAL) return false;
-      return (spaces[row - 1 + offset] & (1 << col)) == 0;
-    case S:
-      if (row + size + offset >= 6 || orient == HORIZONTAL) return false;
-      return (spaces[row + size] & (1 << col)) == 0;
+      while (row + moves > 0) {
+        if ((spaces[row + moves - 1] & (1 << col)) == 0) {
+          moves--;
+        } else break;
+      }
+      return -moves;
     case E:
-      if (col + size + offset >= 6 || orient == VERTICAL) return false;
-      return (spaces[row] & (1 << col + size + offset )) == 0;
+      while (col + size + moves < 6) {
+        if ((spaces[row] & (1 << col + size + moves)) == 0) {
+          moves++;
+        } else break;
+      }
+      return moves;
+    case S:
+      while (row + size + moves < 6) {
+        if ((spaces[row + size + moves] & (1 << col)) == 0) {
+          moves++;
+        } else break;
+      }
+      return moves;
     case W:
-      if (col + offset <= 0 || orient == VERTICAL) return false;
-      return (spaces[row] & (1 << col - 1 + offset)) == 0;
+      while (col + moves > 0) {
+        if ((spaces[row] & (1 << col + moves - 1)) == 0) {
+          moves--;
+        } else break;
+      }
+      return -moves;
     }
-    throw new RuntimeException("Invalid Neighbors instance");
+    throw new RuntimeException("Invalid direction " + dir);
   }
   
   public static boolean isBoardSame(Board b1, Board b2) {
@@ -111,8 +132,14 @@ public class Board {
         throw new RuntimeException("Mismatched IDs in boards, were the pieces sorted in both?");
       }
       if (!p2.get(i).getPosition().equals(p1.get(i).getPosition())) {
+        if (b1.hashCode() == b2.hashCode()) {
+          throw new RuntimeException("Board hashcodes are equal but should differ");
+        }
         return false;
       }
+    }
+    if(b1.hashCode() != b2.hashCode()) {
+      throw new RuntimeException("Board hashcodes differ but should be the same");
     }
     return true;
   }
@@ -137,12 +164,65 @@ public class Board {
   public boolean isSolved() {
     Vehicle player = this.getPieceById(0);
     int col = player.getPosition().getCol();
-    int spacesToCheck = 4 - col;
-    for (int i = 0; i < spacesToCheck; i++) {
-      if (!this.isSpaceOpen(player, Direction.E, i)) {
-        return false;
+    int spacesOpen = this.getSpacesOpen(this, player, E);
+    return col + spacesOpen == 4;
+  }
+  
+  public String paint() {
+    String[][] map = new String[][]{
+      {"-","-","-","-","-","-"},
+      {"-","-","-","-","-","-"},
+      {"-","-","-","-","-","-"},
+      {"-","-","-","-","-","-"},
+      {"-","-","-","-","-","-"},
+      {"-","-","-","-","-","-"}
+    };
+    for (Vehicle piece : pieces) {
+      int size = piece.getType() == Type.TRUCK ? 3 : 2;
+      int row = piece.getPosition().getRow();
+      int col = piece.getPosition().getCol();
+      String s = piece.getName().substring(0, 1);
+      map[row][col] = s;
+      if (piece.getOrientation() == Orientation.HORIZONTAL) {
+        map[row][col+1] = s;
+        if (size == 3) {
+          map[row][col+2] = s;
+        }
+      }
+      if (piece.getOrientation() == Orientation.VERTICAL) {
+        map[row+1][col] = s;
+        if (size == 3) {
+          map[row+2][col] = s;
+        }
       }
     }
-    return true;
+    StringBuilder sb = new StringBuilder();
+    sb.append("\n");
+    for (int i = 0; i < 6; i++) {
+      for (int j = 0; j < 6; j++) {
+        sb.append(map[i][j]);
+      }
+      sb.append("\n");
+    }
+    return sb.toString();
+  }
+  
+  @Override
+  public boolean equals(Object o) {
+    if (o == null || !(o instanceof Board)) {
+      return false;
+    }
+    Board b = (Board) o;
+    return hashCode() == o.hashCode();
+  }
+  
+  public String getMovesHash() {
+    return movesHash;
+  }
+  
+  @Override
+  public int hashCode() {
+    return hashCode;
+    //return movesHash.hashCode();
   }
 }

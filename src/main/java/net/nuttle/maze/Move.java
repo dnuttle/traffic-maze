@@ -1,6 +1,8 @@
 package net.nuttle.maze;
 
 public class Move {
+  
+  private static final String ID_PATT = "%02d";
 
   private Vehicle piece;
   private Vehicle piece2;
@@ -18,6 +20,10 @@ public class Move {
     this.endRow = piece2.getPosition().getRow();
   }
   
+  public Move() {
+    
+  }
+  
   public int getStartRow() {
     return startRow;
   }
@@ -30,9 +36,24 @@ public class Move {
   public int getEndCol() {
     return endCol;
   }
+  /*
+  public String getMoveHash() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(String.format(ID_PATT, piece.getId()));
+    sb.append(piece.getPosition().getRow())
+      .append(piece.getPosition().getCol())
+      .append(piece2.getPosition().getRow())
+      .append(piece2.getPosition().getCol())
+      .append(":");
+    return sb.toString();
+  }
+  */
   
   @Override
   public String toString() {
+    if (piece == null) {
+      return "Starting point";
+    }
     StringBuilder sb = new StringBuilder();
     sb.append(piece.getName()).append(" ");
     if (startCol != endCol && startRow != endRow) {

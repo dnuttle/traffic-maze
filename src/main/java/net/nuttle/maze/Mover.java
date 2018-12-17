@@ -19,103 +19,123 @@ public class Mover {
 
   private static final Logger LOG = LoggerFactory.getLogger(Mover.class);
   List<Node> winners;
+  List<List<Board>> winningBoards;
   List<Board> boards;
+  List<Direction> directions;
   GameTree tree;
   
   public Mover(Board start) {
+    directions = new ArrayList<>(4);
+    directions.add(N);
+    directions.add(E);
+    directions.add(S);
+    directions.add(W);
     winners = new ArrayList<>();
+    winningBoards = new ArrayList<>();
     boards = new ArrayList<>();
     boards.add(start);
     tree = new GameTree(start);
+    LOG.info("Starting board");
+    LOG.info(start.paint());
+  }
+  
+  public void run() {
     makeMove(tree.getRoot());
     boolean first = true;
+    List<Board> winner = winningBoards.get(0);
+    int step = 1;
+    for (Board b : winner) {
+      LOG.info(step + ". " + b.getMove() + b.paint());
+    }
+    /*
     for (Node winner : winners) {
       int steps = 0;
       Node curr = winner;
+      if (first) {
+        LOG.info(tree.getRoot().getBoard().paint());
+      }
       while (curr != null) {
         steps++;
         if (first && curr.getBoard().getMove() != null) {
-          LOG.debug((steps + 1) + ". " + curr.getBoard().getMove().toString());
+          LOG.info(steps + ". " + curr.getBoard().getMove().toString()
+              + curr.getBoard().paint());
         }
         curr = curr.getParent();
       }
-      LOG.debug("{} steps", steps);
+      LOG.info("{} steps", steps);
       first = false;
     }
     LOG.debug("Found {} winners", winners.size());
+    */
   }
   
-  public void makeMove(Node n) {
-    Board b = n.getBoard();
+  private void addWinner(Node leaf) {
+    List<Board> sequence = new ArrayList<>();
+    Node curr = leaf;
+    while ((curr = curr.getParent()) != null) {
+      Board b = curr.getBoard().cloneBoard();
+      b.setMove(curr.getBoard().getMove());
+      sequence.add(0, b);
+    }
+    sequence.get(0).setMove(new Move());
+    winningBoards.add(sequence);
+    //winners.add(winner);
+  }
+  
+  public void makeMove(Node parent) {
+    Board b = parent.getBoard();
     for (Vehicle piece : b.getPieces()) {
-      int leftMoves = 0;
-      int rightMoves = 0;
-      int upMoves = 0;
-      int downMoves = 0;
-      while (b.isSpaceOpen(piece, Direction.W, -leftMoves)) leftMoves++;
-      while (b.isSpaceOpen(piece, Direction.E, rightMoves)) rightMoves++;
-      while (b.isSpaceOpen(piece, Direction.S, downMoves)) downMoves++;
-      while (b.isSpaceOpen(piece, Direction.N, upMoves)) upMoves++;
-      for (int i = 1; i <= leftMoves; i++) {
-        Board newBoard = checkBoard(b, piece, Direction.W, i);
-        if (newBoard != null) {
-          boards.add(newBoard);
-          Node newNode = n.addChild(newBoard);
-          if (newBoard.isSolved()) {
-            winners.add(newNode);
+      for (Direction d : directions) {
+        int moves = b.getSpacesOpen(b, piece, d);
+        for (int i = moves; i > 0; i--) {
+          Board child = checkBoard(b, piece, d, i);
+          if (child != null) {
+            debugMove(b, child);
+            boards.add(child);
+            Node childNode = parent.addChild(child);
+            if (child.isSolved()) {
+              //winners.add(childNode);
+              addWinner(childNode);
+            }
+            makeMove(childNode);
           }
-          makeMove(newNode);
-        } else break;
-      }
-      for (int i = 1; i <= rightMoves; i++) {
-        Board newBoard = checkBoard(b, piece, Direction.E, i);
-        if (newBoard != null) {
-          boards.add(newBoard);
-          Node newNode = n.addChild(newBoard);
-          if (newBoard.isSolved()) {
-            winners.add(newNode);
-          }
-          makeMove(newNode);
-        } else break;
-      }
-      for (int i = 1; i <= upMoves; i++) {
-        Board newBoard = checkBoard(b, piece, Direction.N, i);
-        if (newBoard != null) {
-          boards.add(newBoard);
-          Node newNode = n.addChild(newBoard);
-          if (newBoard.isSolved()) {
-            winners.add(newNode);
-          }
-          makeMove(newNode);
-        } else break;
-      }
-      for (int i = 1; i <= downMoves; i++) {
-        Board newBoard = checkBoard(b, piece, Direction.S, i);
-        if (newBoard != null) {
-          boards.add(newBoard);
-          Node newNode = n.addChild(newBoard);
-          if (newBoard.isSolved()) {
-            winners.add(newNode);
-          }
-          makeMove(newNode);
-        } else break;
+        }
       }
     }
   }
   
+  
+  private void debugMove(Board start, Board end) {
+    LOG.trace("Move\n" + start.paint() + "\n" + end.paint());
+  }
+  
+  /**
+   * Returns true if the proposed move does not result in a board that already exists
+   * (i.e. is a duplicate of previous moves from the starting point)
+   * @param b
+   * @param piece
+   * @param dir
+   * @param spacesMoved
+   * @return
+   */
   private Board checkBoard(Board b, Vehicle piece, Direction dir, int spacesMoved) {
     if (piece.getOrientation() == VERTICAL && (dir == E || dir == W)) return null;
     if (piece.getOrientation() == HORIZONTAL && (dir == N || dir ==S)) return null;
+    //LOG.trace(piece.getName() + " " + dir + " " + spacesMoved);
     Board clone = b.cloneBoard();
     Vehicle pieceToMove = clone.getPieceById(piece.getId());
     pieceToMove.move(dir,  spacesMoved);
+    Move move = new Move(piece, pieceToMove);
+    clone.setMove(move);
     clone.finalize();
+    
     if (isBoardExists(clone)) {
       return null;
     }
-    LOG.debug("Moving {} {} spaces {}, pos now {}", pieceToMove.getName(), spacesMoved, dir, pieceToMove.getPosition());
-    Move move = new Move(piece, pieceToMove);
-    clone.setMove(move);
+    
+    LOG.trace("Moving {} {} spaces {}, pos now {}", pieceToMove.getName(), spacesMoved, dir, pieceToMove.getPosition());
+    LOG.trace(">" + b.getMovesHash());
+    LOG.trace(clone.getMovesHash());
     return clone;
   }
 
